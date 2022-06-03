@@ -85,11 +85,13 @@ export const Profile = ({ auth, onLoggedOut }: Props): JSX.Element => {
 			});
 	};
 
-	const { accessToken } = auth;
+	const { accessToken, nfts } = auth;
 
 	const {
 		payload: { publicAddress },
 	} = jwtDecode<JwtDecoded>(accessToken);
+
+	// const nfts_str = JSON.stringify(nfts);
 
 	const { loading, user } = state;
 
@@ -100,20 +102,30 @@ export const Profile = ({ auth, onLoggedOut }: Props): JSX.Element => {
 			<p>
 				Logged in as <Blockies seed={publicAddress} />
 			</p>
+			<p>
+				<button onClick={onLoggedOut}>Logout</button>
+			</p>
 			<div>
-				My username is {username ? <pre>{username}</pre> : 'not set.'}{' '}
+				{/* My username is {username ? <pre>{username}</pre> : 'not set.'}{' '} */}
 				My publicAddress is <pre>{publicAddress}</pre>
+				My NFTs are
+				<pre>
+					{nfts.map(function (nft: { image: string }, i: any) {
+						return (
+							<div key={i}>
+								<img src={nft.image} key={i} />
+							</div>
+						);
+					})}
+				</pre>
 			</div>
-			<div>
+			{/* <div>
 				<label htmlFor="username">Change username: </label>
 				<input name="username" onChange={handleChange} />
 				<button disabled={loading} onClick={handleSubmit}>
 					Submit
 				</button>
-			</div>
-			<p>
-				<button onClick={onLoggedOut}>Logout</button>
-			</p>
+			</div> */}
 		</div>
 	);
 };
