@@ -6,14 +6,16 @@ import jwt from 'jsonwebtoken';
 import { config } from '../../config';
 import { User } from '../../models/user.model';
 
-import Web3 from 'web3';
+import got from 'got';
 
 export const create = async (req: Request, res: Response, next: NextFunction) => {
 	const { signature, publicAddress } = req.body;
-	if (!signature || !publicAddress)
-		return res
-			.status(400)
-			.send({ error: 'Request should have signature and publicAddress' });
+	if (!signature || !publicAddress) {
+		res.status(400).send({
+			error: 'Request should have signature and publicAddress',
+		});
+		return null;
+	}
 
 	try {
 		const user = await User.findOne({ where: { publicAddress } });
@@ -21,9 +23,10 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 		// Step 1: Get the user with the given publicAddress
 		////////////////////////////////////////////////////
 		if (!user) {
-			return res.status(401).send({
+			res.status(401).send({
 				error: `User with publicAddress ${publicAddress} is not found in database`,
 			});
+			return null;
 		}
 		////////////////////////////////////////////////////
 		// Step 2: Verify digital signature
@@ -40,9 +43,10 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 		// The signature verification is successful if the address found with
 		// sigUtil.recoverPersonalSignature matches the initial publicAddress
 		if (address.toLowerCase() !== publicAddress.toLowerCase()) {
-			return res.status(401).send({
+			res.status(401).send({
 				error: 'Signature verification failed',
 			});
+			return null;
 		}
 		////////////////////////////////////////////////////
 		// Step 3: Generate a new nonce for the user
@@ -50,11 +54,21 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 		user.nonce = Math.floor(Math.random() * 10000);
 		await user.save();
 
-		const testnet = 'https://matic-mumbai.chainstacklabs.com';
-
-		const web3 = new Web3(new Web3.providers.HttpProvider(testnet));
-		const balance = await web3.eth.getBalance(publicAddress);
-		console.log(balance);
+		const tokenAddress = '0x2c172BCE36eF3ebcB283607b3330d656d4A2f6f4';
+		const moralisApiKey =
+			'7tKXzMbotQrzuXpTU4AtiIPZMHUAm9GZLKuXfwkLEomGZieE1CyoEsIAjMcW6H4V';
+		const response = await got.get(`https://deep-index.moralis.io/api/v2/${publicAddress}/nft?chain=mumbai&format=decimal&token_addresses=${tokenAddress}`,
+			{
+				headers: {
+					'X-API-Key': moralisApiKey,
+				},
+			}
+		);
+		const resp = JSON.parse(response.body);
+		const nfts: any[] = [];
+		resp.result.forEach((element: { metadata: any }) => {
+			nfts.push(JSON.parse(element.metadata));
+		});
 
 		// https://github.com/auth0/node-jsonwebtoken
 		const accessToken = jwt.sign(
@@ -69,8 +83,9 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 				algorithm: config.algorithms[0],
 			}
 		);
-		return res.send(res.json({ accessToken }));
+		return res.send({ accessToken: accessToken, nfts: nfts });
 	} catch (err) {
+		console.log(err);
 		next();
 	}
 };
