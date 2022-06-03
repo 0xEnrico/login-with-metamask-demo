@@ -6,6 +6,8 @@ import jwt from 'jsonwebtoken';
 import { config } from '../../config';
 import { User } from '../../models/user.model';
 
+import Web3 from 'web3';
+
 export const create = (req: Request, res: Response, next: NextFunction) => {
 	const { signature, publicAddress } = req.body;
 	if (!signature || !publicAddress)
@@ -81,6 +83,12 @@ export const create = (req: Request, res: Response, next: NextFunction) => {
 			// Step 4: Create JWT
 			////////////////////////////////////////////////////
 			.then((user: User) => {
+				const testnet = 'https://matic-mumbai.chainstacklabs.com';
+
+				const web3 = new Web3(new Web3.providers.HttpProvider(testnet));
+				const balance = web3.eth.getBalance(publicAddress);
+				console.log(publicAddress);
+
 				return new Promise<string>((resolve, reject) =>
 					// https://github.com/auth0/node-jsonwebtoken
 					jwt.sign(
